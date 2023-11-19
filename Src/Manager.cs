@@ -21,6 +21,7 @@ using Silk.NET.Core;
 using System.Drawing.Imaging;
 using System.Drawing;
 using Image = SixLabors.ImageSharp.Image;
+using System.Net;
 
 namespace TheIdkTool{
 
@@ -45,16 +46,21 @@ namespace TheIdkTool{
             }
         }
 
-        public static void SelectFolderButton(ref string input, string text){
-            ImGui.SameLine();
-            if (ImGui.Button("..")){
-                string output = SelectFolder(input);
-                if (output == string.Empty)
-                    output = input;
-                input = output;
+        public static void CheckVersion(){
+            try{
+                string url = "https://raw.githubusercontent.com/PandaHexCode/TheIdkTool/master/VersionIndex";
+                using (WebClient client = new WebClient()){
+                    string version = client.DownloadString(url);
+
+                    version = version.Trim();
+
+                    float versionFloat = StringToFloat(version);
+                    if(versionFloat < MainWindow.currentVersion)
+                        DrawUtilRender.AddDrawUtil(new WarningDialog(), "Your version is outdated.");
+                }
+            }catch (Exception ex){
+                DrawUtilRender.AddDrawUtil(new WarningDialog(), "Something went wrong.\n" + ex.Message);
             }
-            ImGui.SameLine();
-            ImGui.Text(text);
         }
 
         public static RawImage GetRawImage(string path){
@@ -85,6 +91,18 @@ namespace TheIdkTool{
                 var imageSpan = new ReadOnlySpan<RawImage>(new[] { image });
                 return imageSpan;
             }
+        }
+
+        public static void SelectFolderButton(ref string input, string text){
+            ImGui.SameLine();
+            if (ImGui.Button("..")){
+                string output = SelectFolder(input);
+                if (output == string.Empty)
+                    output = input;
+                input = output;
+            }
+            ImGui.SameLine();
+            ImGui.Text(text);
         }
 
         public static string SelectFolder(string trySetDefault){
