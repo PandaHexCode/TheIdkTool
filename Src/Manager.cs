@@ -48,15 +48,15 @@ namespace TheIdkTool{
 
         public static void CheckVersion(){
             try{
-                string url = "https://raw.githubusercontent.com/PandaHexCode/TheIdkTool/master/VersionIndex";
+                string url = "https://raw.githubusercontent.com/PandaHexCode/TheIdkTool/master/VersionIndex?token=GHSAT0AAAAAACKQHTA7HASQYGXGRRAYBL4MZK2MCCA";
                 using (WebClient client = new WebClient()){
                     string version = client.DownloadString(url);
 
                     version = version.Trim();
 
                     float versionFloat = StringToFloat(version);
-                    if(versionFloat < MainWindow.currentVersion)
-                        DrawUtilRender.AddDrawUtil(new WarningDialog(), "Your version is outdated.");
+                    if(versionFloat > MainWindow.currentVersion)
+                        DrawUtilRender.AddDrawUtil(new WarningDialog(), "Your version is outdated.\nCheckout the newest release on https://github.com/PandaHexCode/TheIdkTool");
                 }
             }catch (Exception ex){
                 DrawUtilRender.AddDrawUtil(new WarningDialog(), "Something went wrong.\n" + ex.Message);
