@@ -22,7 +22,7 @@ namespace TheIdkTool.Windows{
 
         private Vector4[] colors = new Vector4[10];
 
-        public static float currentVersion = 1.0f;
+        public static float currentVersion = 1.1f;
 
         public void CalculateColors() {
             colors[0] = Manager.HexToVector4("403037");
