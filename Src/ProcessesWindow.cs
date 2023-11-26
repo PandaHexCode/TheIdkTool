@@ -192,6 +192,9 @@ namespace TheIdkTool.Windows{
             }
             if (ImGui.Button("Kill##" + process.Id))
                 Manager.TryToKillProcess(process);
+            ImGui.SameLine();
+            if (ImGui.Button("Force window darkmode"))
+                WindowsDarkmodeUtil.SetDarkmodeAware(process.MainWindowHandle);
         }
 
         public static string MakeInfosString(Process process){
