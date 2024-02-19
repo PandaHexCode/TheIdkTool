@@ -1,4 +1,4 @@
-﻿﻿using Microsoft.Win32;
+﻿using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -22,6 +22,7 @@ using System.Drawing.Imaging;
 using System.Drawing;
 using Image = SixLabors.ImageSharp.Image;
 using System.Net;
+using NAudio.Wave;
 
 namespace TheIdkTool{
 
@@ -93,9 +94,9 @@ namespace TheIdkTool{
             }
         }
 
-        public static void SelectFolderButton(ref string input, string text){
+        public static void SelectFolderButton(ref string input, string text, int id = 0){
             ImGui.SameLine();
-            if (ImGui.Button("..")){
+            if (ImGui.Button("..##" + id)){
                 string output = SelectFolder(input);
                 if (output == string.Empty)
                     output = input;
@@ -123,7 +124,7 @@ namespace TheIdkTool{
 
         public static void SelectFileButton(ref string input, string text){
             ImGui.SameLine();
-            if (ImGui.Button("..")){
+            if (ImGui.Button("..##4")){
                 string temp = input;
                 Thread fileSelectThread = new Thread(() => SelectFile(ref temp, temp));
                 fileSelectThread.SetApartmentState(ApartmentState.STA);//Because OpenFileDialog freezes without being in a STA
@@ -383,6 +384,138 @@ namespace TheIdkTool{
                     .ToArray();
             return musicFiles;
         }
+        public static void EncryptFile(string filePath, string key)
+        {
+            using (Aes aesAlg = Aes.Create())
+            {
+                aesAlg.Key = Convert.FromBase64String(key);
+                aesAlg.Mode = CipherMode.CFB;
+
+                aesAlg.GenerateIV();
+
+                ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
+
+                byte[] fileContent = File.ReadAllBytes(filePath);
+
+                byte[] encryptedContent;
+                using (MemoryStream msEncrypt = new MemoryStream())
+                {
+                    using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
+                    {
+                        csEncrypt.Write(fileContent, 0, fileContent.Length);
+                    }
+                    encryptedContent = msEncrypt.ToArray();
+                }
+
+                byte[] result = new byte[aesAlg.IV.Length + encryptedContent.Length];
+                Buffer.BlockCopy(aesAlg.IV, 0, result, 0, aesAlg.IV.Length);
+                Buffer.BlockCopy(encryptedContent, 0, result, aesAlg.IV.Length, encryptedContent.Length);
+
+                File.WriteAllBytes(filePath, result);
+            }
+        }
+
+        public static void DecryptFile(string filePath, string key)
+        {
+            using (Aes aesAlg = Aes.Create())
+            {
+                aesAlg.Key = Convert.FromBase64String(key);
+                aesAlg.Mode = CipherMode.CFB;
+
+                byte[] encryptedData = File.ReadAllBytes(filePath);
+
+                byte[] iv = new byte[aesAlg.IV.Length];
+                Buffer.BlockCopy(encryptedData, 0, iv, 0, iv.Length);
+
+                ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, iv);
+
+                byte[] decryptedContent;
+                using (MemoryStream msDecrypt = new MemoryStream())
+                {
+                    using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Write))
+                    {
+                        csDecrypt.Write(encryptedData, iv.Length, encryptedData.Length - iv.Length);
+                    }
+                    decryptedContent = msDecrypt.ToArray();
+                }
+
+                File.WriteAllBytes(filePath, decryptedContent);
+            }
+        }
+
+        public static string GetKey()
+        {
+            using (Aes aesAlg = Aes.Create())
+            {
+                aesAlg.GenerateKey(); 
+
+                if (aesAlg.Key.Length != 16 && aesAlg.Key.Length != 24 && aesAlg.Key.Length != 32)
+                {
+                    throw new InvalidOperationException("");
+                }
+
+                string base64Key = Convert.ToBase64String(aesAlg.Key);
+
+                return base64Key;
+            }
+        }
+
+        public static string EncryptString(string plainText, string key)
+        {
+            using (Aes aesAlg = Aes.Create())
+            {
+                aesAlg.Key = Convert.FromBase64String(key);
+                aesAlg.Mode = CipherMode.CFB;
+
+                ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
+
+                using (MemoryStream msEncrypt = new MemoryStream())
+                {
+                    using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
+                    {
+                        using (StreamWriter swEncrypt = new StreamWriter(csEncrypt))
+                        {
+                            swEncrypt.Write(plainText);
+                        }
+                    }
+
+                    byte[] iv = aesAlg.IV;
+                    byte[] encryptedText = msEncrypt.ToArray();
+
+                    byte[] result = new byte[iv.Length + encryptedText.Length];
+                    Buffer.BlockCopy(iv, 0, result, 0, iv.Length);
+                    Buffer.BlockCopy(encryptedText, 0, result, iv.Length, encryptedText.Length);
+
+                    return Convert.ToBase64String(result);
+                }
+            }
+        }
+
+        public static string DecryptString(string cipherText, string key)
+        {
+            byte[] fullCipher = Convert.FromBase64String(cipherText);
+
+            using (Aes aesAlg = Aes.Create())
+            {
+                aesAlg.Key = Convert.FromBase64String(key);
+                aesAlg.Mode = CipherMode.CFB;
+                aesAlg.IV = fullCipher.Take(aesAlg.BlockSize / 8).ToArray();
+
+                ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
+
+                using (MemoryStream msDecrypt = new MemoryStream(fullCipher.Skip(aesAlg.BlockSize / 8).ToArray()))
+                {
+                    using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
+                    {
+                        using (StreamReader srDecrypt = new StreamReader(csDecrypt))
+                        {
+                            return srDecrypt.ReadToEnd();
+                        }
+                    }
+                }
+            }
+        }
+
 
         public static void SaveFile(string path, string content){
             if (File.Exists(path))
