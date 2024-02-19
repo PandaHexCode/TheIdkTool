@@ -1,63 +1,43 @@
-﻿﻿using ImGuiNET;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
-using System.Net;
-using System.Text;
-using System.Threading.Tasks;
-using Silk.NET.OpenGL;
+﻿using ImGuiNET;
 using TheIdkTool.Dialogs;
 using YoutubeDLSharp;
 using YoutubeDLSharp.Options;
-using System.IO;
 
 namespace TheIdkTool.Windows{
-    public class FileWindow{
+    public class FileWindow : DrawWindow{
 
-        public static string currentPathInput = string.Empty;
-        public static string currentDirectoryInput = string.Empty;
-        public static string[] otherInputs = new string[9] { string.Empty, string.Empty, string.Empty,
-        string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty};
-        public static bool[] otherToggles = new bool[1] { false};
-        public static bool showWindow = true;
-        public static List<string> youtubeLinks = new List<string>();
-        private static YoutubeDL ytdl = null;
-        private static List<string> youtubeDownloadProgressList = new List<string>();
-        private static List<CancellationTokenSource> youtubeDownloadTokens = new List<CancellationTokenSource>();
+        public  bool[] otherToggles = new bool[1] { false};
+        public  List<string> youtubeLinks = new List<string>();
+        private  YoutubeDL ytdl = null;
+        private  List<string> youtubeDownloadProgressList = new List<string>();
+        private  List<CancellationTokenSource> youtubeDownloadTokens = new List<CancellationTokenSource>();
 
-        public static void Draw(){
-            if (!showWindow)
-                return;
-            ImGui.Begin("Files & tools");
-            Manager.CheckMinWindowSize(295, 245);
-
+        public override void Draw(){
             if (ImGui.TreeNodeEx("Specific file")){
-                ImGui.InputText("##p3", ref currentPathInput, 1000);
-                Manager.SelectFileButton(ref currentPathInput, "Path");
-                DrawFileTreeNode(currentPathInput);
-                if((currentPathInput.EndsWith(".mp3") | currentPathInput.EndsWith(".wav") | currentPathInput.EndsWith(".mp4")
-                    | currentPathInput.EndsWith(".m4a") | currentPathInput.EndsWith(".ogg")) && ImGui.TreeNodeEx("Meta")){
-                    DrawMetaEditerNode(currentPathInput);
+                ImGui.InputText("##p3", ref inputRefs[9], 1000);
+                Manager.SelectFileButton(ref inputRefs[9], "Path");
+                DrawFileTreeNode(inputRefs[9]);
+                if((inputRefs[9].EndsWith(".mp3") | inputRefs[9].EndsWith(".wav") | inputRefs[9].EndsWith(".mp4")
+                    | inputRefs[9].EndsWith(".m4a") | inputRefs[9].EndsWith(".ogg")) && ImGui.TreeNodeEx("Meta")){
+                    DrawMetaEditerNode(inputRefs[9]);
                 }
                 ImGui.TreePop();
             }
 
             if(ImGui.TreeNodeEx("Directory tools")){
-                ImGui.InputText("##p2", ref currentDirectoryInput, 1000);
-                Manager.SelectFolderButton(ref currentDirectoryInput, "Path");
-                if (DrawDirectoryTreeNode(currentDirectoryInput)){
+                ImGui.InputText("##p2", ref inputRefs[10], 1000);
+                Manager.SelectFolderButton(ref inputRefs[10], "Path");
+                if (DrawDirectoryTreeNode(inputRefs[10])){
                     if (ImGui.TreeNodeEx("Audio meta replacer(TagLib)")){
                         ImGui.TextWrapped("Replace the meta of every music file of the directory." +
                             "\nLeave empty for not replace.");
-                        ImGui.Text(Manager.GetMusicFilesFromDirectory(currentDirectoryInput).Length + " music files found.");
-                        ImGui.InputText("Author", ref otherInputs[1], 500);
-                        ImGui.InputText("Album", ref otherInputs[2], 500);
-                        ImGui.InputText("##cv", ref otherInputs[0], 1000);
-                        Manager.SelectFileButton(ref otherInputs[0], "Cover path");
+                        ImGui.Text(Manager.GetMusicFilesFromDirectory(inputRefs[10]).Length + " music files found.");
+                        ImGui.InputText("Author", ref inputRefs[1], 500);
+                        ImGui.InputText("Album", ref inputRefs[2], 500);
+                        ImGui.InputText("##cv", ref inputRefs[0], 1000);
+                        Manager.SelectFileButton(ref inputRefs[0], "Cover path");
 
-                        if (File.Exists(otherInputs[0])){
+                        if (File.Exists(inputRefs[0])){
                             try{
                                 
                             }catch(Exception e){
@@ -66,29 +46,29 @@ namespace TheIdkTool.Windows{
                         }
 
                         if (ImGui.Button("Replace")){
-                            if (otherInputs[0] != "" && !File.Exists(otherInputs[0])){
+                            if (inputRefs[0] != "" && !File.Exists(inputRefs[0])){
                                 DrawUtilRender.AddDrawUtil(new WarningDialog(), "File path is incorrect.");
                                 return;
                             }
 
-                            if (otherInputs[0] != "" && !otherInputs[0].EndsWith(".jpg") && !otherInputs[0].EndsWith(".png")){
+                            if (inputRefs[0] != "" && !inputRefs[0].EndsWith(".jpg") && !inputRefs[0].EndsWith(".png")){
                                 DrawUtilRender.AddDrawUtil(new WarningDialog(), "Please use .jpg or .png format.");
                                 return;
                             }
 
                             TagLib.IPicture cover = null;
-                            if (otherInputs[0] != "")
-                                cover = new TagLib.Picture(otherInputs[0]);
+                            if (inputRefs[0] != "")
+                                cover = new TagLib.Picture(inputRefs[0]);
 
-                            foreach (string path in Manager.GetMusicFilesFromDirectory(currentDirectoryInput)){
+                            foreach (string path in Manager.GetMusicFilesFromDirectory(inputRefs[10])){
                                 try{
                                     using (var file = TagLib.File.Create(path)){
-                                        if (otherInputs[0] != "")
+                                        if (inputRefs[0] != "")
                                             file.Tag.Pictures = new TagLib.IPicture[] { cover };
-                                        if (otherInputs[1] != "")
-                                            file.Tag.Performers = new string[] { otherInputs[1] };
-                                        if (otherInputs[2] != "")
-                                            file.Tag.Album = otherInputs[2];
+                                        if (inputRefs[1] != "")
+                                            file.Tag.Performers = new string[] { inputRefs[1] };
+                                        if (inputRefs[2] != "")
+                                            file.Tag.Album = inputRefs[2];
                                         file.Save();
                                     }
                                 }catch(Exception e){
@@ -110,29 +90,29 @@ namespace TheIdkTool.Windows{
                          "\nNew text: Test"+
                          "\nAfter:Test1,Test2");
                         ImGui.Checkbox("Use as start", ref otherToggles[0]);
-                        ImGui.InputText("To replace", ref otherInputs[3], 500);
-                        ImGui.InputText("New text", ref otherInputs[4], 500);
+                        ImGui.InputText("To replace", ref inputRefs[3], 500);
+                        ImGui.InputText("New text", ref inputRefs[4], 500);
 
                         if (ImGui.Button("Replace")){
-                            string[] files = Directory.GetFiles(currentDirectoryInput);
+                            string[] files = Directory.GetFiles(inputRefs[10]);
                             foreach (string filePath in files){
                                 try{
                                     if (otherToggles[0])
-                                        File.Move(filePath, filePath.Replace(filePath.Substring(filePath.IndexOf(otherInputs[3])), otherInputs[4]));
+                                        File.Move(filePath, filePath.Replace(filePath.Substring(filePath.IndexOf(inputRefs[3])), inputRefs[4]));
                                     else
-                                        File.Move(filePath, filePath.Replace(otherInputs[3], otherInputs[4]));
+                                        File.Move(filePath, filePath.Replace(inputRefs[3], inputRefs[4]));
                                 }catch(Exception e) { continue; }
                             }
                             DrawUtilRender.AddDrawUtil(new WarningDialog(), "Finished.");
                         }
 
                         ImGui.Text("Add text to end of the file names.");
-                        ImGui.InputText("Text", ref otherInputs[5], 500);
+                        ImGui.InputText("Text", ref inputRefs[5], 500);
                         if (ImGui.Button("Start")){
-                            string[] files = Directory.GetFiles(currentDirectoryInput);
+                            string[] files = Directory.GetFiles(inputRefs[10]);
                             foreach (string filePath in files){
                                 try{
-                                    File.Move(filePath, filePath + otherInputs[5]);
+                                    File.Move(filePath, filePath + inputRefs[5]);
                                 }
                                 catch (Exception e) { continue; }
                             }
@@ -155,33 +135,33 @@ namespace TheIdkTool.Windows{
                     }
                 }
 
-                ImGui.InputText("##o", ref otherInputs[7], 1000);
-                Manager.SelectFolderButton(ref otherInputs[7], "Output directory");
+                ImGui.InputText("##o", ref inputRefs[7], 1000);
+                Manager.SelectFolderButton(ref inputRefs[7], "Output directory");
 
-                ImGui.InputText("", ref otherInputs[6], 800);
+                ImGui.InputText("", ref inputRefs[6], 800);
                 ImGui.SameLine();
                 if (ImGui.Button("+")){
-                    if (!otherInputs[6].StartsWith("https://www.youtube.com") && !otherInputs[6].StartsWith("www.youtube.com") && !otherInputs[6].StartsWith("youtube.com")){
+                    if (!inputRefs[6].StartsWith("https://www.youtube.com") && !inputRefs[6].StartsWith("www.youtube.com") && !inputRefs[6].StartsWith("youtube.com")){
                         DrawUtilRender.AddDrawUtil(new WarningDialog(), "That is not a valid youtube link.\n");
                         return;
                     }
 
-                    if (!otherInputs[6].Contains("/playlist") && otherInputs[6].Contains("list=")){
+                    if (!inputRefs[6].Contains("/playlist") && inputRefs[6].Contains("list=")){
                         DrawUtilRender.AddDrawUtil(new WarningDialog(), "If you want to download a playlist,\nplease use a link that does not have a video selected.\n");
                     }
 
-                    if (otherInputs[6].StartsWith("www."))
-                        otherInputs[6] = "https://" +otherInputs[6];
+                    if (inputRefs[6].StartsWith("www."))
+                        inputRefs[6] = "https://" +inputRefs[6];
 
-                    if (otherInputs[6].StartsWith("you", StringComparison.OrdinalIgnoreCase))
-                        otherInputs[6] = "https://www." + otherInputs[6];
+                    if (inputRefs[6].StartsWith("you", StringComparison.OrdinalIgnoreCase))
+                        inputRefs[6] = "https://www." + inputRefs[6];
 
-                    if (youtubeLinks.Contains(otherInputs[6])){
+                    if (youtubeLinks.Contains(inputRefs[6])){
                         DrawUtilRender.AddDrawUtil(new WarningDialog(), "You have already added that link.\n");
                         return;
                     }
 
-                    youtubeLinks.Add(otherInputs[6]);
+                    youtubeLinks.Add(inputRefs[6]);
                 }
                 ImGui.SameLine();
                 ImGui.Text("New link");
@@ -199,7 +179,7 @@ namespace TheIdkTool.Windows{
                     }
                 }
 
-                ytdl.OutputFolder = otherInputs[7];
+                ytdl.OutputFolder = inputRefs[7];
                 if(ImGui.Button("Download as mp4(Video)")){
                     Task.Run(() => YtTaskRunner(youtubeLinks.ToArray(), 0));
                 }
@@ -234,7 +214,7 @@ namespace TheIdkTool.Windows{
             }
         }
 
-        public static void DrawMetaEditerNode(string path){
+        public  void DrawMetaEditerNode(string path){
             TagLib.File file = TagLib.File.Create(path);
             string authors = string.Empty;
             foreach (string author in file.Tag.Performers)
@@ -243,17 +223,17 @@ namespace TheIdkTool.Windows{
             ImGui.TreePop();
         }
 
-        public static void Checker(object? o, int i){
+        public  void Checker(object? o, int i){
             try{
                 if (o is string)
                     youtubeDownloadProgressList[i] = (string)o;
             }catch(Exception e){}
         }
 
-        public static async void YtTaskRunner(string[] links, int task){
+        public  async void YtTaskRunner(string[] links, int task){
             try{
-                if (!Directory.Exists(otherInputs[7]))
-                    Directory.CreateDirectory(otherInputs[7]);
+                if (!Directory.Exists(inputRefs[7]))
+                    Directory.CreateDirectory(inputRefs[7]);
 
                 youtubeDownloadProgressList.Add(string.Empty);
                 int i = youtubeDownloadProgressList.Count - 1;
@@ -292,7 +272,7 @@ namespace TheIdkTool.Windows{
             }
         }
 
-        public static bool DrawFileTreeNode(string path){
+        public  bool DrawFileTreeNode(string path){
             ImGui.Text("Path:" + path);
             if (!File.Exists(path)){
                 ImGui.Text("Path is incorrect.");
@@ -339,7 +319,7 @@ namespace TheIdkTool.Windows{
             return true;
         }
 
-        public static bool DrawDirectoryTreeNode(string path){
+        public  bool DrawDirectoryTreeNode(string path){
             ImGui.Text("Path:" + path);
             if (!Directory.Exists(path)){
                 ImGui.Text("Path is incorrect.");
@@ -350,7 +330,7 @@ namespace TheIdkTool.Windows{
             return true;
         }
 
-        public static void DrawEncryptionNode(string path){
+        public  void DrawEncryptionNode(string path){
             if (ImGui.TreeNodeEx("Encryption/Decryption")){ 
                 bool isDirectory = false;
                 if (Directory.Exists(path))
@@ -358,12 +338,31 @@ namespace TheIdkTool.Windows{
                 ImGui.Text("Is directory: " + isDirectory);
 
                 try{
-                    if (ImGui.TreeNodeEx("Basic")){
-                        ImGui.InputText("Key", ref otherInputs[8], 500);
+                    if (ImGui.TreeNodeEx("Advanced(Cryptography)")){
+                        ImGui.InputText("Key", ref inputRefs[8], 500);
                         ImGui.SameLine();
                         if (ImGui.Button("Randomize"))
-                            otherInputs[8] = "";
-                      
+                            inputRefs[8] = Manager.GetKey();
+
+                        if (ImGui.Button("Encrypt")){
+                            if (isDirectory){
+                                foreach (string file in Directory.GetFiles(path))
+                                    Manager.EncryptFile(file, inputRefs[8]);
+                            }else 
+                                Manager.EncryptFile(path, inputRefs[8]);
+
+                            DrawUtilRender.AddDrawUtil(new WarningDialog(), "Finished.");
+                        }
+                        ImGui.SameLine();
+                        if (ImGui.Button("Decrypt")){
+                            if (isDirectory){
+                                foreach (string file in Directory.GetFiles(path))
+                                    Manager.DecryptFile(file, inputRefs[8]);
+                            }else
+                                Manager.DecryptFile(path, inputRefs[8]);
+                            DrawUtilRender.AddDrawUtil(new WarningDialog(), "Finished.");
+                        }
+
                         ImGui.TreePop();
                     }
                 }catch(Exception ex){
