@@ -1,4 +1,4 @@
-﻿﻿using ImGuiNET;
+﻿using ImGuiNET;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,19 +9,17 @@ using TheIdkTool.Dialogs;
 
 namespace TheIdkTool.Windows{ 
 
-    public class TodoWindow{
+    public class TodoWindow : DrawWindow{
 
-        public static bool showWindow = true;
         public static List<string> categories = new List<string>();
         public static List<Todo> todos = new List<Todo>();
-        public static string[] todoInputs = new string[5] { string.Empty, string.Empty, string.Empty, string.Empty, string.Empty };
-        public static int currentBoxItem = 0;
-        public static bool changeCatergory = false;
-        public static bool isEditCategory = false;
-        public static int currentEditCategory = 0;
-        public static bool isEditTodo = false;
-        public static int currentEditTodo = 0;
-        public static bool onlyViewMode = false;
+        public  int currentBoxItem = 0;
+        public  bool changeCatergory = false;
+        public  bool isEditCategory = false;
+        public  int currentEditCategory = 0;
+        public  bool isEditTodo = false;
+        public  int currentEditTodo = 0;
+        public  bool onlyViewMode = false;
 
         public class Todo{
             public string title;
@@ -37,12 +35,7 @@ namespace TheIdkTool.Windows{
             }
         }
 
-        public static void Draw(){
-            if (!showWindow)
-                return;
-            ImGui.Begin("Todo");
-            Manager.CheckMinWindowSize(215, 310);
-
+        public override void Draw(){
             ImGui.Checkbox("Only view mode", ref onlyViewMode);
             Manager.Tooltip("Reduces CPU usage so it can run well in the background while making tasks.");
 
@@ -68,7 +61,7 @@ namespace TheIdkTool.Windows{
             }catch(Exception ex){Console.WriteLine(ex.Message);}
         }
 
-        public static void DrawAddTodo(){
+        public  void DrawAddTodo(){
             if (isEditTodo)
                 ImGui.Text("Editing - Todo");
             if(isEditTodo && ImGui.Button("Cancel editing")){
@@ -76,7 +69,7 @@ namespace TheIdkTool.Windows{
                 currentEditTodo = 0;
                 return;
             }
-            ImGui.InputText("Title", ref todoInputs[0], 500);
+            ImGui.InputText("Title", ref inputRefs[0], 500);
             ImGui.NewLine();
 
             if (categories.Count < 0)
@@ -94,60 +87,60 @@ namespace TheIdkTool.Windows{
                         changeCatergory = false;
                     }
                 }
-                ImGui.InputText("", ref todoInputs[2], 500);
+                ImGui.InputText("", ref inputRefs[2], 500);
                 if(ImGui.Selectable("Add new catergory")){
-                    if (categories.Contains(todoInputs[2]))
+                    if (categories.Contains(inputRefs[2]))
                         DrawUtilRender.AddDrawUtil(new WarningDialog(), "There is already a catergory with the same name.\n");
                     else{
-                        categories.Add(todoInputs[2]);
-                        todoInputs[2] = string.Empty;
+                        categories.Add(inputRefs[2]);
+                        inputRefs[2] = string.Empty;
                     }
                 }
                 ImGui.EndListBox();
             }
 
             ImGui.NewLine();
-            ImGui.InputTextMultiline("Description", ref todoInputs[3], 10000, new System.Numerics.Vector2(500, 200));
+            ImGui.InputTextMultiline("Description", ref inputRefs[3], 10000, new System.Numerics.Vector2(500, 200));
             ImGui.NewLine();
 
             if (isEditTodo){
                 if(ImGui.Button("Finish editing")){
-                    if (!todoInputs[0].Equals(todos[currentEditTodo].title) && !CheckIfTitleIsAvaible(todoInputs[0], categories[currentBoxItem]))
+                    if (!inputRefs[0].Equals(todos[currentEditTodo].title) && !CheckIfTitleIsAvaible(inputRefs[0], categories[currentBoxItem]))
                         DrawUtilRender.AddDrawUtil(new WarningDialog(), "There is already a title in that catergory with the same name.\n");
                     else{
-                        todos[currentEditTodo].title = todoInputs[0];
-                        todos[currentEditTodo].description = todoInputs[3];
+                        todos[currentEditTodo].title = inputRefs[0];
+                        todos[currentEditTodo].description = inputRefs[3];
                         todos[currentEditTodo].catergory = categories[currentBoxItem];
                         isEditTodo = false;
                     }
                 }
             }else if (ImGui.Button("Add##2")){
-                if (!CheckIfTitleIsAvaible(todoInputs[0], categories[currentBoxItem]))
+                if (!CheckIfTitleIsAvaible(inputRefs[0], categories[currentBoxItem]))
                     DrawUtilRender.AddDrawUtil(new WarningDialog(), "There is already a title in that catergory with the same name.\n");
                 else
-                    todos.Add(new Todo(todoInputs[0], todoInputs[3], categories[currentBoxItem], false));
+                    todos.Add(new Todo(inputRefs[0], inputRefs[3], categories[currentBoxItem], false));
             }
         }
 
-        public static void DrawTodos(){
+        public  void DrawTodos(){
             int deleteButtonId = 0;
             int editButtonId = 0;
             string[] tempCatergories = categories.ToArray();
             Todo[] tempTodos = todos.ToArray();
 
             if (isEditCategory){
-                ImGui.InputText("New name", ref todoInputs[4], 500);
+                ImGui.InputText("New name", ref inputRefs[4], 500);
                 if (ImGui.Button("Finish")){
                     string oldCategory = categories[currentEditCategory];
-                    if (!todoInputs[4].Equals(oldCategory) && categories.Contains(todoInputs[4])){
+                    if (!inputRefs[4].Equals(oldCategory) && categories.Contains(inputRefs[4])){
                         DrawUtilRender.AddDrawUtil(new WarningDialog(), "There is already a catergory with the same name.\n");
                         return;
                     }
                     foreach(Todo todo in tempTodos){
                         if (todo.catergory.Equals(oldCategory))
-                            todo.catergory = todoInputs[4];
+                            todo.catergory = inputRefs[4];
                     }
-                    categories[currentEditCategory] = todoInputs[4];
+                    categories[currentEditCategory] = inputRefs[4];
                     isEditCategory = false;
                     currentEditCategory = 0;
                     oldCategory = null;
@@ -187,7 +180,7 @@ namespace TheIdkTool.Windows{
                         ImGui.SameLine();
                         if (ImGui.Button("Edit##" + editButtonId)){
                             isEditCategory = true;
-                            todoInputs[4] = category;
+                            inputRefs[4] = category;
                             currentEditCategory = categories.IndexOf(category);
                             break;
                         }
@@ -220,8 +213,8 @@ namespace TheIdkTool.Windows{
                                 todos.Remove(todo);
                             ImGui.SameLine();
                             if (ImGui.Button("Edit##" + editButtonId)){
-                                todoInputs[0] = todo.title;
-                                todoInputs[3] = todo.description;
+                                inputRefs[0] = todo.title;
+                                inputRefs[3] = todo.description;
                                 currentBoxItem = categories.IndexOf(todo.catergory);
                                 isEditTodo = true;
                                 currentEditTodo = todos.IndexOf(todo);
@@ -237,7 +230,7 @@ namespace TheIdkTool.Windows{
             }
         }
 
-        public static bool CheckIfTitleIsAvaible(string title, string catergory){
+        public  bool CheckIfTitleIsAvaible(string title, string catergory){
             foreach(Todo todo in todos){
                 if (todo.title == title && todo.catergory == catergory)
                     return false;
