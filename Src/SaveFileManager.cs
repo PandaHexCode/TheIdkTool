@@ -1,4 +1,4 @@
-﻿﻿using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,26 +11,62 @@ namespace TheIdkTool{
     public class SaveFileManager{
         
         public static string dirPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\TheIdkTool";
-        public static string filePath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)+
-            "\\TheIdkTool\\Settings.dat";
         public static string todosFilePath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) +
          "\\TheIdkTool\\Todos.dat";
 
-        public static void SaveFile(){
+        public static void SaveFiles(){
             if (!Directory.Exists(dirPath))
                 Directory.CreateDirectory(dirPath);
 
-            string outputString = string.Empty;
-            outputString = outputString + ProcessesWindow.killListPath + "\n";
-            outputString = outputString + ProcessesWindow.showWindow + "\n";
-            outputString = outputString + FileWindow.showWindow + "\n";
-            outputString = outputString + ConnectionsWindow.showWindow + "\n";
-            outputString = outputString + TodoWindow.showWindow + "\n";
-            outputString = outputString + FileWindow.currentDirectoryInput + "\n";
-            outputString = outputString + FileWindow.currentPathInput + "\n";
-            outputString = outputString + FileWindow.otherInputs[7] + "\n";
-            Manager.SaveFile(filePath, outputString);
+            string main = string.Empty;
+            main = MainWindow.showAdvancedButtons.ToString();
+            Manager.SaveFile(dirPath + "\\Main.dat", main);
+
+            foreach(DrawWindow window in WindowManager.drawWindows){
+                string output = window.showWindow.ToString() + "\n";
+                foreach(string input in window.inputRefs)
+                    output = output + input + "\n";
+                Manager.SaveFile(dirPath + "\\" + window.name + ".dat", output);
+            }
+
             SaveTodos();
+        }
+
+        public static void LoadFiles(){
+            if (!File.Exists(dirPath + "\\Main.dat"))
+                return;
+
+            try{
+                string[] lines = Manager.GetFileIn(dirPath + "\\Main.dat").Split('\n');
+                MainWindow.showAdvancedButtons = Manager.StringToBool(lines[0]);
+                foreach (DrawWindow window in WindowManager.drawWindows){
+                    try{ 
+                        string path = dirPath + "\\" + window.name + ".dat";
+                        if (!File.Exists(path)){
+                            Console.WriteLine("Can't find " + path + ".");
+                            continue;
+                        }
+                        string[] lines2 = Manager.GetFileIn(path).Split('\n');
+                        window.showWindow = Manager.StringToBool(lines2[0]);
+                        for (int i = 0; i < lines2.Length; i++){
+                            if (i > 0 && i - 1 < window.inputRefs.Length){
+                                window.inputRefs[i - 1] = lines2[i];
+                            }
+                        }
+                    }catch(Exception ex){
+                        Console.WriteLine(ex.Message + "\n" + ex.StackTrace);
+                    }
+                }
+            }catch (Exception ex){
+                Console.WriteLine(ex.Message);
+                DrawUtilRender.AddDrawUtil(new WarningDialog(), "Error loading settings.\n" + ex.Message);
+            }
+
+            try{
+                LoadTodos(todosFilePath);
+            }catch (Exception ex){
+                DrawUtilRender.AddDrawUtil(new WarningDialog(), "Error loading todo settings.\n" + ex.Message);
+            }
         }
 
         public static void SaveTodos(){
@@ -78,31 +114,6 @@ namespace TheIdkTool{
                     Console.WriteLine("Error loading todo " + line + " " + ex.Message);
                     continue;
                 }
-            }
-        }
-
-        public static void LoadFile(){
-            if (!File.Exists(filePath))
-                return;
-
-            try{
-                string[] lines = Manager.GetFileIn(filePath).Split('\n');
-                ProcessesWindow.killListPath = lines[0];
-                ProcessesWindow.showWindow = Manager.StringToBool(lines[1]);
-                FileWindow.showWindow = Manager.StringToBool(lines[2]);
-                ConnectionsWindow.showWindow = Manager.StringToBool(lines[3]);
-                TodoWindow.showWindow = Manager.StringToBool(lines[4]);
-                FileWindow.currentDirectoryInput = lines[5];
-                FileWindow.currentPathInput = lines[6];
-                FileWindow.otherInputs[7] = lines[7];
-            }catch(Exception ex){
-                DrawUtilRender.AddDrawUtil(new WarningDialog(), "Error loading settings.\n" + ex.Message);
-            }
-
-            try{
-                LoadTodos(todosFilePath);
-            }catch(Exception ex){
-                DrawUtilRender.AddDrawUtil(new WarningDialog(), "Error loading todo settings.\n" + ex.Message);
             }
         }
 
