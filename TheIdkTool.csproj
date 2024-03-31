@@ -11,16 +11,30 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <COMReference Include="SystemMonitor">
+      <WrapperTool>tlbimp</WrapperTool>
+      <VersionMinor>7</VersionMinor>
+      <VersionMajor>3</VersionMajor>
+      <Guid>1b773e42-2509-11cf-942f-008029004347</Guid>
+      <Lcid>0</Lcid>
+      <Isolated>false</Isolated>
+      <EmbedInteropTypes>true</EmbedInteropTypes>
+    </COMReference>
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="Logo2.ico" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FolderBrowserEx" Version="1.0.1" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="Silk.NET.Input" Version="2.18.0" />
     <PackageReference Include="Silk.NET.OpenGL" Version="2.18.0" />
     <PackageReference Include="Silk.NET.OpenGL.Extensions.ImGui" Version="2.17.1" />
     <PackageReference Include="Silk.NET.Windowing" Version="2.18.0" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.0.2" />
+    <PackageReference Include="System.Management" Version="8.0.0" />
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
     <PackageReference Include="YoutubeDLSharp" Version="1.0.0" />
   </ItemGroup>

@@ -22,6 +22,8 @@ using System.Drawing.Imaging;
 using System.Drawing;
 using Image = SixLabors.ImageSharp.Image;
 using System.Net;
+using NAudio.Wave;
+using System.Management;
 
 namespace TheIdkTool{
 
@@ -37,8 +39,49 @@ namespace TheIdkTool{
         public const int WM_SYSCOMMAND = 0x0112;
         public const int SC_CLOSE = 0xF060;
 
-        public static bool IsAdministrator()
-        {
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
+        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+        [DllImport("user32.dll")]
+        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern long SetWindowLong(IntPtr hWnd, int nIndex, long dwNewLong);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern long GetWindowLong(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct RECT{
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        private const uint SWP_SHOWWINDOW = 0x0040;
+        private const int SWP_FRAMECHANGED = 0x0020;
+        private const int SW_MAXIMIZE = 3;
+        private const int GWL_STYLE = -16;
+        private const int GWL_EXSTYLE = -20;
+        private const int WS_OVERLAPPEDWINDOW = 0x00CF0000;
+        private const uint WS_POPUP = 0x80000000;
+        private const int WS_EX_TOPMOST = 0x00000008;
+        private const int WS_EX_TOOLWINDOW = 0x00000080;
+        private const int SW_RESTORE = 9;
+        public static bool IsAdministrator(){
             using (WindowsIdentity identity = WindowsIdentity.GetCurrent())
             {
                 WindowsPrincipal principal = new WindowsPrincipal(identity);
@@ -93,9 +136,9 @@ namespace TheIdkTool{
             }
         }
 
-        public static void SelectFolderButton(ref string input, string text){
+        public static void SelectFolderButton(ref string input, string text, int id = 0){
             ImGui.SameLine();
-            if (ImGui.Button("..")){
+            if (ImGui.Button("..##" + id)){
                 string output = SelectFolder(input);
                 if (output == string.Empty)
                     output = input;
@@ -103,6 +146,82 @@ namespace TheIdkTool{
             }
             ImGui.SameLine();
             ImGui.Text(text);
+        }
+
+        public static FileWindow.Drive[] GetEveryFileDrive(){
+            DriveInfo[] allDrives = DriveInfo.GetDrives();
+
+            var connectedDrives = Array.FindAll(allDrives, drive => drive.IsReady);
+
+            FileWindow.Drive[] driveNames = new FileWindow.Drive[connectedDrives.Length];
+
+            for (int i = 0; i < connectedDrives.Length; i++){
+                driveNames[i] = new FileWindow.Drive();
+                driveNames[i].drive = connectedDrives[i].Name;
+            }
+
+            return driveNames;
+        }
+
+        public static void ToggleLockTaskbar(bool state){
+            const string keyName = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced";
+            const string valueName = "TaskbarSizeMove";
+
+            try{
+                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(keyName, true)){
+                    if (key != null){
+                        int currentValue = (int)key.GetValue(valueName);
+
+                        if (state){
+                            key.SetValue(valueName, 0, RegistryValueKind.DWord);
+                        }else{
+                            key.SetValue(valueName, 1, RegistryValueKind.DWord);
+                        }
+                    }else{
+                        Console.WriteLine("Registry key not found.");
+                    }
+                }
+            }catch (Exception ex){
+                Console.WriteLine("Error toggling taskbar lock: " + ex.Message);
+            }
+        }
+
+        public static void ToggleAutomaticallyHideTaskbar(bool state){
+            const string keyName = @"Software\Microsoft\Windows\CurrentVersion\Explorer\StuckRects3";
+            const string valueName = "Settings";
+
+            try
+            {
+                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(keyName, true))
+                {
+                    if (key != null)
+                    {
+                        byte[] settings = (byte[])key.GetValue(valueName);
+
+                        // Bit position 24 represents the "Automatically hide the taskbar in desktop mode" option
+                        if (state)
+                        {
+                            // Set bit 24 to 1 to enable automatic hiding
+                            settings[24] |= 0x02;
+                        }
+                        else
+                        {
+                            // Set bit 24 to 0 to disable automatic hiding
+                            settings[24] &= unchecked((byte)~0x02);
+                        }
+
+                        key.SetValue(valueName, settings, RegistryValueKind.Binary);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Registry key not found.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error toggling automatic hiding of taskbar in desktop mode: " + ex.Message);
+            }
         }
 
         public static string SelectFolder(string trySetDefault){
@@ -123,7 +242,7 @@ namespace TheIdkTool{
 
         public static void SelectFileButton(ref string input, string text){
             ImGui.SameLine();
-            if (ImGui.Button("..")){
+            if (ImGui.Button("..##4")){
                 string temp = input;
                 Thread fileSelectThread = new Thread(() => SelectFile(ref temp, temp));
                 fileSelectThread.SetApartmentState(ApartmentState.STA);//Because OpenFileDialog freezes without being in a STA
@@ -383,6 +502,190 @@ namespace TheIdkTool{
                     .ToArray();
             return musicFiles;
         }
+        public static void EncryptFile(string filePath, string key)
+        {
+            using (Aes aesAlg = Aes.Create())
+            {
+                aesAlg.Key = Convert.FromBase64String(key);
+                aesAlg.Mode = CipherMode.CFB;
+
+                aesAlg.GenerateIV();
+
+                ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
+
+                byte[] fileContent = File.ReadAllBytes(filePath);
+
+                byte[] encryptedContent;
+                using (MemoryStream msEncrypt = new MemoryStream())
+                {
+                    using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
+                    {
+                        csEncrypt.Write(fileContent, 0, fileContent.Length);
+                    }
+                    encryptedContent = msEncrypt.ToArray();
+                }
+
+                byte[] result = new byte[aesAlg.IV.Length + encryptedContent.Length];
+                Buffer.BlockCopy(aesAlg.IV, 0, result, 0, aesAlg.IV.Length);
+                Buffer.BlockCopy(encryptedContent, 0, result, aesAlg.IV.Length, encryptedContent.Length);
+
+                File.WriteAllBytes(filePath, result);
+            }
+        }
+
+        public static void DecryptFile(string filePath, string key)
+        {
+            using (Aes aesAlg = Aes.Create())
+            {
+                aesAlg.Key = Convert.FromBase64String(key);
+                aesAlg.Mode = CipherMode.CFB;
+
+                byte[] encryptedData = File.ReadAllBytes(filePath);
+
+                byte[] iv = new byte[aesAlg.IV.Length];
+                Buffer.BlockCopy(encryptedData, 0, iv, 0, iv.Length);
+
+                ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, iv);
+
+                byte[] decryptedContent;
+                using (MemoryStream msDecrypt = new MemoryStream())
+                {
+                    using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Write))
+                    {
+                        csDecrypt.Write(encryptedData, iv.Length, encryptedData.Length - iv.Length);
+                    }
+                    decryptedContent = msDecrypt.ToArray();
+                }
+
+                File.WriteAllBytes(filePath, decryptedContent);
+            }
+        }
+
+        public static string GetKey()
+        {
+            using (Aes aesAlg = Aes.Create())
+            {
+                aesAlg.GenerateKey(); 
+
+                if (aesAlg.Key.Length != 16 && aesAlg.Key.Length != 24 && aesAlg.Key.Length != 32)
+                {
+                    throw new InvalidOperationException("");
+                }
+
+                string base64Key = Convert.ToBase64String(aesAlg.Key);
+
+                return base64Key;
+            }
+        }
+
+        public static string EncryptString(string plainText, string key)
+        {
+            using (Aes aesAlg = Aes.Create())
+            {
+                aesAlg.Key = Convert.FromBase64String(key);
+                aesAlg.Mode = CipherMode.CFB;
+
+                ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
+
+                using (MemoryStream msEncrypt = new MemoryStream())
+                {
+                    using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
+                    {
+                        using (StreamWriter swEncrypt = new StreamWriter(csEncrypt))
+                        {
+                            swEncrypt.Write(plainText);
+                        }
+                    }
+
+                    byte[] iv = aesAlg.IV;
+                    byte[] encryptedText = msEncrypt.ToArray();
+
+                    byte[] result = new byte[iv.Length + encryptedText.Length];
+                    Buffer.BlockCopy(iv, 0, result, 0, iv.Length);
+                    Buffer.BlockCopy(encryptedText, 0, result, iv.Length, encryptedText.Length);
+
+                    return Convert.ToBase64String(result);
+                }
+            }
+        }
+
+        public static string DecryptString(string cipherText, string key)
+        {
+            byte[] fullCipher = Convert.FromBase64String(cipherText);
+
+            using (Aes aesAlg = Aes.Create())
+            {
+                aesAlg.Key = Convert.FromBase64String(key);
+                aesAlg.Mode = CipherMode.CFB;
+                aesAlg.IV = fullCipher.Take(aesAlg.BlockSize / 8).ToArray();
+
+                ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
+
+                using (MemoryStream msDecrypt = new MemoryStream(fullCipher.Skip(aesAlg.BlockSize / 8).ToArray()))
+                {
+                    using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
+                    {
+                        using (StreamReader srDecrypt = new StreamReader(csDecrypt))
+                        {
+                            return srDecrypt.ReadToEnd();
+                        }
+                    }
+                }
+            }
+        }
+
+       public static int GetProcessIdFromFilePath(string fileName){
+            try{
+                foreach (DriveInfo drive in DriveInfo.GetDrives()){
+                    if (drive.IsReady){
+                        string[] directories = Directory.GetDirectories(drive.RootDirectory.FullName, "*", SearchOption.AllDirectories);
+                        foreach (string directory in directories){
+                            try{
+                                int processId = RetrieveProcessId(fileName, directory);
+                                if (processId != 0)
+                                    return processId;
+                            }
+                            catch (UnauthorizedAccessException) { }
+                        }
+                    }
+                }
+            }catch (Exception ex){
+            }
+            return 0;
+        }
+
+        public static int RetrieveProcessId(string fileName, string directory){
+            var query = string.Format("SELECT * FROM CIM_DataFile WHERE Name = '{0}'", Path.Combine(directory, fileName).Replace("'", "''"));
+
+            var searcher = new ManagementObjectSearcher(query);
+            var results = searcher.Get();
+
+            foreach (var result in results){
+                var managementObject = (ManagementObject)result;
+                var processId = managementObject["ProcessId"];
+                if (processId != null)
+                    return Convert.ToInt32(processId);
+            }
+
+            return 0;
+        }
+
+
+        public static string[] GetEveryFileName(string path){
+            string[] files = Directory.GetFiles(path);
+
+            string[] subDirectories = Directory.GetDirectories(path);
+
+            var allFileNames = new List<string>();
+
+            allFileNames.AddRange(files);
+
+            foreach (string subDir in subDirectories){
+                allFileNames.AddRange(GetEveryFileName(subDir));
+            }
+
+            return allFileNames.ToArray();
+        }
 
         public static void SaveFile(string path, string content){
             if (File.Exists(path))
@@ -391,6 +694,56 @@ namespace TheIdkTool{
             StreamWriter sw = new StreamWriter(path, true, Encoding.UTF8);
             sw.Write(content);
             sw.Close();
+        }
+
+        public static void ForceFullScreen(Process proc){
+            IntPtr handle = proc.MainWindowHandle;
+            RECT rect;
+            GetWindowRect(handle, out rect);
+
+            Screen screen = Screen.AllScreens[MainWindow.currentSelectedScreen];
+
+            long style = GetWindowLong(handle, GWL_STYLE);
+            long exStyle = GetWindowLong(handle, GWL_EXSTYLE);
+
+            style &= ~(WS_OVERLAPPEDWINDOW | WS_POPUP);
+            exStyle &= ~(WS_EX_TOOLWINDOW);
+            exStyle |= WS_EX_TOPMOST;
+
+            SetWindowLong(handle, GWL_STYLE, style);
+            SetWindowLong(handle, GWL_EXSTYLE, exStyle);
+
+            SetWindowPos(handle, IntPtr.Zero, screen.Bounds.X, screen.Bounds.Y, screen.Bounds.Width, screen.Bounds.Height, SWP_SHOWWINDOW | SWP_FRAMECHANGED);
+        }
+
+        public static void ReverseFullScreen(Process proc){
+            IntPtr handle = proc.MainWindowHandle;
+
+            Screen screen = Screen.AllScreens[MainWindow.currentSelectedScreen];
+
+            long style = GetWindowLong(handle, GWL_STYLE);
+            long exStyle = GetWindowLong(handle, GWL_EXSTYLE);
+
+            style |= WS_OVERLAPPEDWINDOW;
+            style &= ~WS_POPUP;
+            exStyle &= ~WS_EX_TOPMOST;
+
+            SetWindowLong(handle, GWL_STYLE, style);
+            SetWindowLong(handle, GWL_EXSTYLE, exStyle);
+
+            SetWindowPos(handle, IntPtr.Zero, screen.Bounds.X, screen.Bounds.Y, screen.Bounds.Width / 2, screen.Bounds.Height / 2, SWP_SHOWWINDOW | SWP_FRAMECHANGED);
+        }
+
+        public static void ForceProcessToForeground(Process process){
+            if (process == null)
+                throw new ArgumentNullException(nameof(process));
+
+            IntPtr mainWindowHandle = process.MainWindowHandle;
+
+            if (mainWindowHandle != IntPtr.Zero){
+                ShowWindow(mainWindowHandle, SW_RESTORE);
+                SetForegroundWindow(mainWindowHandle);
+            }
         }
 
         public static float StringToFloat(string str){

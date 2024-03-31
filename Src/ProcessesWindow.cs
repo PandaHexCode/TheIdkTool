@@ -1,23 +1,15 @@
 ﻿﻿using ImGuiNET;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TheIdkTool.Dialogs;
 
 namespace TheIdkTool.Windows{
 
-    public class ProcessesWindow{
+    public class ProcessesWindow : DrawWindow{
 
-        public static string killListPath = string.Empty;
         public static Thread? checkForNewProcessesThread = null;
         public static Thread? checkForNewModulesThread = null;
         public static List<Process> checkForNewProcessesRegisteredProcesses = new List<Process>();
         public static List<Module> checkForNewModulesRegisteredModules = new List<Module>() ;
-        public static bool showWindow = true;
 
         public class Module{
             public Process process;
@@ -29,19 +21,14 @@ namespace TheIdkTool.Windows{
             }
         }
 
-        public static void Draw(){
-            if (!showWindow)
-                return;
-            ImGui.Begin("Processes");
-            Manager.CheckMinWindowSize(485, 260);
-
-            ImGui.InputText("##kl", ref killListPath, 1024);
-            Manager.SelectFileButton(ref killListPath, "Kill list path");
+        public override void Draw(){
+            ImGui.InputText("##kl", ref inputRefs[0], 1024);
+            Manager.SelectFileButton(ref inputRefs[0], "Kill list path");
             if(ImGui.Button("Try to kill list")){
-                if(!File.Exists(killListPath))
+                if(!File.Exists(inputRefs[0]))
                     DrawUtilRender.AddDrawUtil(new WarningDialog(), "The path is incorrect!");
 
-                string[] lines = Manager.GetFileIn(killListPath).Split('\n');
+                string[] lines = Manager.GetFileIn(inputRefs[0]).Split('\n');
                 foreach (string str in lines){
                     if (String.IsNullOrEmpty(str))
                         continue;
@@ -136,6 +123,30 @@ namespace TheIdkTool.Windows{
                 }
             }
 
+            if (MainWindow.showAdvancedButtons){
+                if (ImGui.Button("Test Module Check")){
+                    Console.Clear();
+
+                    List<string> modules = new List<string>();
+
+                    foreach (Process process in Process.GetProcesses()){
+                        try{
+                            foreach(ProcessModule module in process.Modules){
+                                if (!modules.Contains(module.FileName))
+                                    modules.Add(module.FileName);
+                            }
+                        }catch (Exception e){
+                            continue;
+                        }
+                    }
+
+                    foreach (string module in modules)
+                        Console.WriteLine(module);
+
+                    modules.Clear();
+                }
+            }
+
             if (ImGui.TreeNodeEx("Active Processes")){ 
                 foreach (Process process in Process.GetProcesses()){
                     if (ImGui.TreeNodeEx(process.ProcessName + ",pid: " + process.Id)){
@@ -146,7 +157,13 @@ namespace TheIdkTool.Windows{
             }
         }
 
-        public static void DrawProcessTreeNode(Process process){
+        public bool IsSystemProcess(Process process){
+            string[] systemProcesses = { "svchost", "explorer", "wininit", "lsass", "csrss", "smss" };
+
+            return Array.Exists(systemProcesses, name => process.ProcessName.Equals(name, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public void DrawProcessTreeNode(Process process){
             try{
                 if (process.HasExited)
                     ImGui.Text("Already exited.");
@@ -192,12 +209,27 @@ namespace TheIdkTool.Windows{
             }
             if (ImGui.Button("Kill##" + process.Id))
                 Manager.TryToKillProcess(process);
+
             ImGui.SameLine();
+
+            if (ImGui.Button("Foreground"))
+                Manager.ForceProcessToForeground(process);
+
             if (ImGui.Button("Force window darkmode"))
                 WindowsDarkmodeUtil.SetDarkmodeAware(process.MainWindowHandle);
+
+            ImGui.SameLine();
+
+            if (ImGui.Button("Force fullscreen window"))
+                Manager.ForceFullScreen(process);
+
+            ImGui.SameLine();
+
+            if (ImGui.Button("Force normal window"))
+                Manager.ReverseFullScreen(process);
         }
 
-        public static string MakeInfosString(Process process){
+        public string MakeInfosString(Process process){
             try{
                 string infos = string.Empty;
                 try{infos = infos + "Priority:" + process.BasePriority.ToString();}catch(Exception e){};

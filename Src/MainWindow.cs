@@ -1,19 +1,13 @@
-﻿﻿using System.Drawing;
-using Silk.NET.Windowing;
+﻿using Silk.NET.Windowing;
 using Silk.NET.Input;
 using Silk.NET.OpenGL;
 using Silk.NET.OpenGL.Extensions.ImGui;
 using ImGuiNET;
-using System.Reflection.Metadata;
-using System.Runtime.InteropServices;
-using Silk.NET.SDL;
 using Color = System.Drawing.Color;
 using Silk.NET.Maths;
 using TheIdkTool.Dialogs;
 using System.Numerics;
-using Silk.NET.Core;
-using System.Collections;
-using Image = SixLabors.ImageSharp.Image;
+using System.Windows.Forms;
 
 namespace TheIdkTool.Windows{
     public class MainWindow{
@@ -23,6 +17,8 @@ namespace TheIdkTool.Windows{
         private Vector4[] colors = new Vector4[10];
 
         public static float currentVersion = 1.1f;
+        public static bool showAdvancedButtons = false;
+        public static int currentSelectedScreen = 0;
 
         public void CalculateColors() {
             colors[0] = Manager.HexToVector4("403037");
@@ -73,6 +69,8 @@ namespace TheIdkTool.Windows{
 
             CalculateColors();
             Manager.CheckVersion();
+            WindowManager.InitWindows();
+            SaveFileManager.LoadFiles();
 
             window.Render += delta =>{
                 controller.Update((float)delta);
@@ -109,11 +107,7 @@ namespace TheIdkTool.Windows{
                // ImGui.PushStyleColor(ImGuiCol., colors[7]);
 
                 DrawMainMenuBar();
-                DrawUtilRender.Draw();
-                ProcessesWindow.Draw();
-                ConnectionsWindow.Draw();
-                FileWindow.Draw();
-                TodoWindow.Draw();
+                WindowManager.Draw();
 
                 controller.Render();
             };
@@ -125,7 +119,7 @@ namespace TheIdkTool.Windows{
 
                 gl?.Dispose();
 
-                SaveFileManager.SaveFile();
+                SaveFileManager.SaveFiles();
             };
     
             window.Run();
@@ -137,15 +131,12 @@ namespace TheIdkTool.Windows{
         public void DrawMainMenuBar(){
             if (ImGui.BeginMainMenuBar()){
                 if (ImGui.BeginMenu("View")){
-                    ImGui.Checkbox("Processes", ref ProcessesWindow.showWindow);
-                    ImGui.Checkbox("Files", ref FileWindow.showWindow);
-                    ImGui.Checkbox("Todo", ref TodoWindow.showWindow);
-                    ImGui.Checkbox("Connections", ref ConnectionsWindow.showWindow);
+                    WindowManager.DrawCheckbox();
                     ImGui.EndMenu();
                 }
                 if (ImGui.BeginMenu("Settings")){
-                    if (ImGui.MenuItem("Load settings"))
-                        SaveFileManager.LoadFile();
+                    ImGui.Text("Main:");
+
                     try{
                         bool current = Manager.IsInStartup("TheIdkTool");
                         checkBoxReferences[0] = current;
@@ -162,6 +153,19 @@ namespace TheIdkTool.Windows{
                     }catch(Exception e){
                         ImGui.MenuItem("Something went wrong.");
                     }
+
+                    ImGui.Text("Current screen:");
+                    int i = 0;
+                    foreach(Screen screen in Screen.AllScreens){
+                        bool r = false;
+                        if (MainWindow.currentSelectedScreen == i)
+                            r = true;
+                        ImGui.Checkbox((i + 1) + "," + screen.Bounds.Width + "x" + screen.Bounds.Height, ref r);
+                        if (r)
+                            MainWindow.currentSelectedScreen = i;
+                        i++;
+                    }
+
                     ImGui.EndMenu();
                 }
                 if (ImGui.BeginMenu("Other")){
