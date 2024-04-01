@@ -215,6 +215,14 @@ namespace TheIdkTool.Windows{
             if (ImGui.Button("Foreground"))
                 Manager.ForceProcessToForeground(process);
 
+            if (ImGui.Button("Force hide cursor"))
+                Manager.ForceCursorStateInProcess(process, false);
+
+            ImGui.SameLine();
+
+            if (ImGui.Button("Force show cursor"))
+                Manager.ForceCursorStateInProcess(process, true);
+
             if (ImGui.Button("Force window darkmode"))
                 WindowsDarkmodeUtil.SetDarkmodeAware(process.MainWindowHandle);
 

@@ -63,6 +63,21 @@ namespace TheIdkTool{
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
 
+        [DllImport("user32.dll")]
+        private static extern bool ShowCursor(bool bShow);
+
+        [DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr GetWindowThreadProcessId(IntPtr hWnd, IntPtr processId);
+
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr OpenProcess(uint dwDesiredAccess, bool bInheritHandle, uint dwProcessId);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool CloseHandle(IntPtr hObject);
+
         [StructLayout(LayoutKind.Sequential)]
         public struct RECT{
             public int Left;
@@ -81,6 +96,8 @@ namespace TheIdkTool{
         private const int WS_EX_TOPMOST = 0x00000008;
         private const int WS_EX_TOOLWINDOW = 0x00000080;
         private const int SW_RESTORE = 9;
+        private const uint PROCESS_QUERY_INFORMATION = 0x0400;
+
         public static bool IsAdministrator(){
             using (WindowsIdentity identity = WindowsIdentity.GetCurrent())
             {
@@ -743,6 +760,23 @@ namespace TheIdkTool{
             if (mainWindowHandle != IntPtr.Zero){
                 ShowWindow(mainWindowHandle, SW_RESTORE);
                 SetForegroundWindow(mainWindowHandle);
+            }
+        }
+
+        public static void ForceCursorStateInProcess(Process process, bool state){
+            IntPtr mainWindowHandle = process.MainWindowHandle;
+            uint processId;
+            GetWindowThreadProcessId(mainWindowHandle, out processId);
+
+            IntPtr hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, false, processId);
+            if (hProcess != IntPtr.Zero){
+                try{
+                    ShowCursor(state);
+                }finally{
+                    CloseHandle(hProcess);
+                }
+            }else{
+                throw new InvalidOperationException("Failed to open process.");
             }
         }
 
