@@ -780,6 +780,25 @@ namespace TheIdkTool{
             }
         }
 
+        public static Process StartProcess(string path){
+            try{
+                ProcessStartInfo startInfo = new ProcessStartInfo();
+                startInfo.FileName = path;
+                Process process = Process.Start(startInfo);
+                return process;
+            }catch (Exception ex){
+                Console.WriteLine(ex.Message);
+                return null;
+            }
+        }
+
+        public static void TryToKillByName(string name){
+            foreach (Process process in Process.GetProcesses()){
+                if (process.ProcessName.StartsWith(name))
+                    TryToKillProcess(process);
+            }
+        }
+
         public static float StringToFloat(string str){
             float fl = 0f;
             float.TryParse(str, out fl);

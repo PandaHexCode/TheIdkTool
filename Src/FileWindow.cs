@@ -1,18 +1,11 @@
 ﻿﻿using ImGuiNET;
 using System.Diagnostics;
 using TheIdkTool.Dialogs;
-using YoutubeDLSharp;
-using YoutubeDLSharp.Options;
-using static TheIdkTool.Windows.FileWindow;
 
 namespace TheIdkTool.Windows{
     public class FileWindow : DrawWindow{
 
         public  bool[] otherToggles = new bool[4] { false, false, true, false };
-        public  List<string> youtubeLinks = new List<string>();
-        private  YoutubeDL ytdl = null;
-        private  List<string> youtubeDownloadProgressList = new List<string>();
-        private  List<CancellationTokenSource> youtubeDownloadTokens = new List<CancellationTokenSource>();
 
         private List<FileSystemWatcher> fileSystemWatchers = new List<FileSystemWatcher>();
         private Drive[] avaibleDrives;
@@ -25,6 +18,7 @@ namespace TheIdkTool.Windows{
             public List<string> newRenamed = new List<string>();
         }
 
+        private int removeLettersInt = 0;
         public override void Draw(){
             if (ImGui.TreeNodeEx("Specific file")){
                 ImGui.InputText("##p3", ref inputRefs[9], 1000);
@@ -95,7 +89,7 @@ namespace TheIdkTool.Windows{
 
                         ImGui.TreePop();
                     }
-                    if(ImGui.TreeNodeEx("File names replacer")){
+                    if (ImGui.TreeNodeEx("File names replacer")){
                         ImGui.TextWrapped("Replace names of every file." +
                          "\nExample:" +
                          "\nBefore:File1,File2" +
@@ -137,6 +131,30 @@ namespace TheIdkTool.Windows{
                             }
                             DrawUtilRender.AddDrawUtil(new WarningDialog(), "Finished.");
                         }
+                        ImGui.TreePop();
+                    }
+                    if (ImGui.TreeNodeEx("Remove letters from start (file name)")){
+                        ImGui.InputInt("Count", ref removeLettersInt);
+
+                        if (ImGui.Button("Start")){
+                            string[] files = Directory.GetFiles(inputRefs[10]);
+                            foreach (string filePath in files){
+                                try{
+                                    string directory = Path.GetDirectoryName(filePath);
+                                    string fileName = Path.GetFileName(filePath);
+
+                                    if (fileName.Length > 4){
+                                        string newFileName = fileName.Substring(removeLettersInt);
+                                        string newFilePath = Path.Combine(directory, newFileName);
+
+                                        File.Move(filePath, newFilePath);
+                                    }
+                                }catch (Exception e) { continue; }
+                            }
+                            DrawUtilRender.AddDrawUtil(new WarningDialog(), "Finished.");
+                        }
+
+                        ImGui.TreePop();
                     }
                 }
                 ImGui.TreePop();
@@ -171,96 +189,6 @@ namespace TheIdkTool.Windows{
 
                 ImGui.TreePop();
             }
-
-            if(ImGui.TreeNodeEx("YouTube converter(Ytdl)")){
-                if(ytdl == null){
-                    try{
-                        ytdl = new YoutubeDL();
-                        ytdl.YoutubeDLPath = Environment.ProcessPath.Replace("TheIdkTool.exe", "\\dl\\yt-dlp.exe");
-                        ytdl.FFmpegPath = Environment.ProcessPath.Replace("TheIdkTool.exe", "\\dl\\ffmpeg.exe");
-                    }catch(Exception e){
-                        DrawUtilRender.AddDrawUtil(new WarningDialog(), "Something went wrong.\n" + e.Message);
-                        return;
-                    }
-                }
-
-                ImGui.InputText("##o", ref inputRefs[7], 1000);
-                Manager.SelectFolderButton(ref inputRefs[7], "Output directory");
-
-                ImGui.InputText("", ref inputRefs[6], 800);
-                ImGui.SameLine();
-                if (ImGui.Button("+")){
-                    if (!inputRefs[6].StartsWith("https://www.youtube.com") && !inputRefs[6].StartsWith("www.youtube.com") && !inputRefs[6].StartsWith("youtube.com")){
-                        DrawUtilRender.AddDrawUtil(new WarningDialog(), "That is not a valid youtube link.\n");
-                        return;
-                    }
-
-                    if (!inputRefs[6].Contains("/playlist") && inputRefs[6].Contains("list=")){
-                        DrawUtilRender.AddDrawUtil(new WarningDialog(), "If you want to download a playlist,\nplease use a link that does not have a video selected.\n");
-                    }
-
-                    if (inputRefs[6].StartsWith("www."))
-                        inputRefs[6] = "https://" +inputRefs[6];
-
-                    if (inputRefs[6].StartsWith("you", StringComparison.OrdinalIgnoreCase))
-                        inputRefs[6] = "https://www." + inputRefs[6];
-
-                    if (youtubeLinks.Contains(inputRefs[6])){
-                        DrawUtilRender.AddDrawUtil(new WarningDialog(), "You have already added that link.\n");
-                        return;
-                    }
-
-                    youtubeLinks.Add(inputRefs[6]);
-                }
-                ImGui.SameLine();
-                ImGui.Text("New link");
-
-                string[] tempLinks = youtubeLinks.ToArray();
-
-                for (int i = 0; i < tempLinks.Length; i++){
-                    string p = string.Empty;
-                    if (tempLinks[i].Contains("/playlist"))
-                        p = "(Playlist detected) - ";
-                    ImGui.TextWrapped(tempLinks[i].Replace("https://www.", p));
-                    ImGui.SameLine();
-                    if (ImGui.Button("-##"+i)){
-                        youtubeLinks.Remove(tempLinks[i]);
-                    }
-                }
-
-                ytdl.OutputFolder = inputRefs[7];
-                if(ImGui.Button("Download as mp4(Video)")){
-                    Task.Run(() => YtTaskRunner(youtubeLinks.ToArray(), 0));
-                }
-
-                if(ImGui.Button("Download as m4a(Audio[Best Quality])")){
-                    Task.Run(() => YtTaskRunner(youtubeLinks.ToArray(), 1));
-                }
-
-                if(ImGui.Button("Download as mp3(Audio)")){
-                    Task.Run(() => YtTaskRunner(youtubeLinks.ToArray(), 2));
-                }
-
-
-                if (youtubeDownloadProgressList.Count > 0){
-                    ImGui.Text("Progresses");
-                    for (int i = 0; i < youtubeDownloadProgressList.Count; i++){
-                        if (string.IsNullOrEmpty(youtubeDownloadProgressList[i]))
-                            ImGui.Text("Starting...");
-                        else
-                            ImGui.Text(youtubeDownloadProgressList[i]);
-                        ImGui.SameLine();
-                        if (ImGui.Button("Cancel")){
-                            youtubeDownloadTokens[i].Cancel();
-                            youtubeDownloadTokens.RemoveAt(i);
-                            youtubeDownloadProgressList.RemoveAt(i);
-                            break;
-                        }
-                    }
-                }
-                         
-                ImGui.TreePop();
-            }
         }
 
         public void DrawListeningNode(string label, ref List<string> array){
@@ -288,55 +216,6 @@ namespace TheIdkTool.Windows{
                 authors = authors + author + ",";
             ImGui.TextWrapped("Album:" + file.Tag.Album + "\nAuthor(s):" + authors);
             ImGui.TreePop();
-        }
-
-        public  void Checker(object? o, int i){
-            try{
-                if (o is string)
-                    youtubeDownloadProgressList[i] = (string)o;
-            }catch(Exception e){}
-        }
-
-        public  async void YtTaskRunner(string[] links, int task){
-            try{
-                if (!Directory.Exists(inputRefs[7]))
-                    Directory.CreateDirectory(inputRefs[7]);
-
-                youtubeDownloadProgressList.Add(string.Empty);
-                int i = youtubeDownloadProgressList.Count - 1;
-                var progress = new Progress<DownloadProgress>(p => Checker(p.DownloadSpeed, i));
-                var cts = new CancellationTokenSource();
-                youtubeDownloadTokens.Add(cts);
-
-                if (task == 0){
-                    foreach (string link in youtubeLinks){
-                        if (link.Contains("/playlist"))
-                            await ytdl.RunVideoPlaylistDownload(link, default, default, default, default, VideoRecodeFormat.Mp4, cts.Token, progress);
-                        else
-                            await ytdl.RunVideoDownload(link, default, default, VideoRecodeFormat.Mp4, cts.Token, progress);
-                    }
-                }
-                if (task == 1){
-                    foreach (string link in youtubeLinks){
-                        if (link.Contains("/playlist"))
-                            await ytdl.RunAudioPlaylistDownload(link, default, default, default, AudioConversionFormat.M4a, cts.Token, progress);
-                        else
-                            await ytdl.RunAudioDownload(link, AudioConversionFormat.M4a, cts.Token, progress);
-                    }
-                }
-                if (task == 2){
-                    foreach (string link in youtubeLinks){
-                        if (link.Contains("/playlist"))
-                            await ytdl.RunAudioPlaylistDownload(link, default, default, default, AudioConversionFormat.Mp3, cts.Token, progress);
-                        else
-                            await ytdl.RunAudioDownload(link, AudioConversionFormat.Mp3, cts.Token, progress);
-                    }
-                }
-                youtubeDownloadProgressList.RemoveAt(i);
-                youtubeDownloadTokens.RemoveAt(i);
-            }catch (Exception e){
-                DrawUtilRender.AddDrawUtil(new WarningDialog(), "Something went wrong.\n" + e.Message);
-            }
         }
 
         public  bool DrawFileTreeNode(string path){

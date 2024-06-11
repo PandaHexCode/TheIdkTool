@@ -15,8 +15,10 @@ namespace TheIdkTool.Dialogs{
             Vector2 center = ImGui.GetMainViewport().GetCenter();
             ImGui.SetNextWindowPos(center, ImGuiCond.Appearing, new Vector2(0.5f, 0.5f));
 
-            if (doShow && !ImGui.IsPopupOpen("Warning"))
+            if (doShow && !ImGui.IsPopupOpen("Warning")){
+                Console.WriteLine((string)message);
                 ImGui.OpenPopup("Warning");
+            }
 
             if (ImGui.BeginPopupModal("Warning", ref doShow, ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoDecoration)){
                 float centerXText = (ImGui.GetWindowWidth() - ImGui.CalcTextSize((string)message).X) * 0.5f;

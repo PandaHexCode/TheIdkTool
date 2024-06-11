@@ -100,7 +100,7 @@ namespace TheIdkTool{
 
                     TodoWindow.categories.Add(line.Replace("\n", ""));
                 }catch (Exception ex){
-                    Console.WriteLine("Error loading todo " + line + " " + ex.Message);
+                    Console.WriteLine("Error loading todo " + line + " " + ex.Message + ex.StackTrace);
                     continue;
                 }
             }
@@ -111,9 +111,11 @@ namespace TheIdkTool{
                     if (string.IsNullOrEmpty(line) | line.Contains("<--->BeginTodos<--->"))
                         continue;
                     string[] args = line.Split("<--->next<--->");
+                    if (args.Length < 2)
+                        continue;
                     TodoWindow.todos.Add(new TodoWindow.Todo(args[0], args[2], args[1], Manager.StringToBool(args[3])));
                 }catch(Exception ex){
-                    Console.WriteLine("Error loading todo " + line + " " + ex.Message);
+                    Console.WriteLine("Error loading todo " + line + " " + ex.Message + ex.StackTrace);
                     continue;
                 }
             }
