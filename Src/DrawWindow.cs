@@ -34,8 +34,9 @@ namespace TheIdkTool.Windows{
             InitWindow(new FileWindow(), "Files & tools", 15, false, false, 295, 245);
             InitWindow(new ConvertersWindow(), "Converters", 10, true, false, 435, 245);
             InitWindow(new ConnectionsWindow(), "Connections", 10, false, false, 470, 530);
+            InitWindow(new InjectionWindow(), "Injection", 10, false, false, 298, 245);
             InitWindow(new TodoWindow(), "Todo", 10, false, false, 215, 310);
-            InitWindow(new ExtraWindow(), "Extra", 10, false, true, 215, 310);
+            InitWindow(new ExtraWindow(), "Extra", 10, false, false, 215, 310);
         }
 
         public static void InitWindow(DrawWindow window, string name, int inputRefsSize, bool autoShow, bool isAdvanced, int minX, int minY){
@@ -67,8 +68,6 @@ namespace TheIdkTool.Windows{
                 if(!window.isAdvanced | (window.isAdvanced && MainWindow.showAdvancedButtons))
                     ImGui.Checkbox(window.name, ref window.showWindow);
             }
-
-            ImGui.Checkbox("Show advanced buttons", ref MainWindow.showAdvancedButtons);
         }
 
     }

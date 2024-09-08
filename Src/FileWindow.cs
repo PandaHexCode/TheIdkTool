@@ -327,7 +327,7 @@ namespace TheIdkTool.Windows{
                 array.Add(name + ", From: " + process.ProcessName);
             }
         }
-
+        
         public static FileSystemWatcher MonitorDirectory(Drive drive, int type) {
             FileSystemWatcher watcher = new FileSystemWatcher();
 

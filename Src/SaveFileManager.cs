@@ -20,7 +20,8 @@ namespace TheIdkTool{
                 Directory.CreateDirectory(dirPath);
 
             string main = string.Empty;
-            main = MainWindow.showAdvancedButtons.ToString() + "\n" + MainWindow.currentSelectedScreen;
+            main = MainWindow.showAdvancedButtons.ToString() + "\n" + MainWindow.currentSelectedScreen
+                + "\n" + MainWindow.enableSoundNotifications;
             Manager.SaveFile(dirPath + "\\Main.dat", main);
 
             foreach(DrawWindow window in WindowManager.drawWindows){
@@ -41,6 +42,7 @@ namespace TheIdkTool{
                 string[] lines = Manager.GetFileIn(dirPath + "\\Main.dat").Split('\n');
                 MainWindow.showAdvancedButtons = Manager.StringToBool(lines[0]);
                 MainWindow.currentSelectedScreen = Manager.StringToInt(lines[1]);
+                MainWindow.enableSoundNotifications = Manager.StringToBool(lines[2]);
                 foreach (DrawWindow window in WindowManager.drawWindows){
                     try{ 
                         string path = dirPath + "\\" + window.name + ".dat";

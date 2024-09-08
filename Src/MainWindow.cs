@@ -18,6 +18,7 @@ namespace TheIdkTool.Windows{
 
         public static float currentVersion = 1.1f;
         public static bool showAdvancedButtons = false;
+        public static bool enableSoundNotifications = true;
         public static int currentSelectedScreen = 0;
 
         public void CalculateColors() {
@@ -68,7 +69,6 @@ namespace TheIdkTool.Windows{
             };
 
             CalculateColors();
-            Manager.CheckVersion();
             WindowManager.InitWindows();
             SaveFileManager.LoadFiles();
 
@@ -137,6 +137,9 @@ namespace TheIdkTool.Windows{
                 if (ImGui.BeginMenu("Settings")){
                     ImGui.Text("Main:");
 
+                    ImGui.Checkbox("Show advanced buttons", ref MainWindow.showAdvancedButtons);
+                    ImGui.Checkbox("Sound Notification", ref MainWindow.enableSoundNotifications);
+
                     try{
                         bool current = Manager.IsInStartup("TheIdkTool");
                         checkBoxReferences[0] = current;
@@ -169,15 +172,43 @@ namespace TheIdkTool.Windows{
                     ImGui.EndMenu();
                 }
                 if (ImGui.BeginMenu("Other")){
-                    if (ImGui.MenuItem("Created by PandaHexCode/Nagisa")){
+                    if(ImGui.MenuItem("Add file/folder context menu"))
+                        AddContextMenuButtons();
+                    
+                    if (ImGui.MenuItem("Remove file/folder context menu"))
+                        RemoveContextMenuButtons();
+                    
+                    if (ImGui.MenuItem("Created by PandaHexCode/Nagisa"))
                         DrawUtilRender.AddDrawUtil(new WarningDialog(), "This is an easter egg woooooh idk?\n");
-                    }
+                   
                     if (ImGui.MenuItem("Close program"))
                         Environment.Exit(1);
                     ImGui.EndMenu();
                 }
                 ImGui.EndMainMenuBar();
             }
+        }
+
+        public void AddContextMenuButtons(){
+            //Manager.AddContextMenu("Open encrypted file", "open", false);
+            Manager.AddContextMenu("Encrypt folder", "encryptF", true, "encryptIco");
+            Manager.AddContextMenu("Decrypt folder", "decryptF", true, "encryptIco");
+            Manager.AddContextMenu("Encrypt file", "encrypt", false, "encryptIco");
+            Manager.AddContextMenu("Decrypt file", "decrypt", false, "encryptIco");
+            Manager.AddContextMenu("Shred file", "shred", false, "shredIco.ico");
+            Manager.AddContextMenu("Shred folder", "shredF", true, "shredIco.ico");
+            DrawUtilRender.AddDrawUtil(new WarningDialog(), "Finished.");
+        }
+
+        public void RemoveContextMenuButtons(){
+            //Manager.RemoveContextMenu("Open encrypted file", false);
+            Manager.RemoveContextMenu("Encrypt folder", true);
+            Manager.RemoveContextMenu("Decrypt folder", true);
+            Manager.RemoveContextMenu("Encrypt file", false);
+            Manager.RemoveContextMenu("Decrypt file", false);
+            Manager.RemoveContextMenu("Shred file", false);
+            Manager.RemoveContextMenu("Shred folder", true);
+            DrawUtilRender.AddDrawUtil(new WarningDialog(), "Finished.");
         }
 
     }

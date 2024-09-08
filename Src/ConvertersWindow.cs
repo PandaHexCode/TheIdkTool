@@ -40,7 +40,8 @@ namespace TheIdkTool.Windows{
 
             ImGui.Spacing();
 
-            ImGui.TextWrapped("Other Converters");
+            ImGui.NewLine();
+            ImGui.TextWrapped("YouTube Converter(Ytdl)");
             ImGui.Spacing();
             DrawYouTubeTreeNode();
         }
@@ -78,7 +79,7 @@ namespace TheIdkTool.Windows{
             }
 
             ImGui.InputText("##o", ref inputRefs[7], 1000);
-            Manager.SelectFolderButton(ref inputRefs[7], "Output directory");
+            Manager.SelectFolderButton(ref inputRefs[7], "Output directory", 1);
 
             ImGui.InputText("", ref inputRefs[6], 800);
             ImGui.SameLine();

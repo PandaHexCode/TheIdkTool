@@ -7,6 +7,12 @@ if(args.Length > 0){
         Process process = Process.GetProcessesByName(args[1])[0];
         Manager.ForceFullScreen(process);
         Process.GetCurrentProcess().Kill();
+        return;
     }
-}else
-    new MainWindow();
+
+    ContextFileWindow.command = args[0].ToLower();
+    ContextFileWindow.path = args[1];
+    new ContextFileWindow();
+}else{
+    new MainWindow(); 
+}

@@ -1,29 +1,22 @@
 ﻿﻿using Microsoft.Win32;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Text;
-using System.Threading.Tasks;
 using TheIdkTool.Windows;
-using static System.Net.Mime.MediaTypeNames;
-using Microsoft.Win32;
 using TheIdkTool.Dialogs;
 using System.Numerics;
 using ImGuiNET;
-using static TheIdkTool.Windows.TodoWindow;
 using System.Security.Cryptography;
-using FolderBrowserEx;
 using System.Windows.Forms;
 using Silk.NET.Core;
-using System.Drawing.Imaging;
-using System.Drawing;
 using Image = SixLabors.ImageSharp.Image;
 using System.Net;
 using NAudio.Wave;
 using System.Management;
+using SixLabors.ImageSharp.PixelFormats;
+using System.Media;
+using Silk.NET.OpenGL;
 
 namespace TheIdkTool{
 
@@ -424,6 +417,7 @@ namespace TheIdkTool{
                     int processId = process.Id;
                     if (!savedProcessIds.Contains(processId)){
                         ProcessesWindow.checkForNewProcessesRegisteredProcesses.Add(process);
+                        Manager.PlaySound("NotificationSound1.wav");
                     }
                     currentProcessIds.Add(processId);
                 }
@@ -477,6 +471,7 @@ namespace TheIdkTool{
                                     ProcessesWindow.Module newModule = new ProcessesWindow.Module(process, module);
                                     ProcessesWindow.checkForNewModulesRegisteredModules.Add(newModule);
                                     savedProcessModules.Add(newModule);
+                                    Manager.PlaySound("NotificationSound1.wav");
                                 }
                             }
                         }
@@ -519,11 +514,33 @@ namespace TheIdkTool{
                     .ToArray();
             return musicFiles;
         }
-        public static void EncryptFile(string filePath, string key)
+
+        public static byte[] GetKeyBytes(string key){
+            byte[] keyBytes = System.Text.Encoding.UTF8.GetBytes(key);
+
+            if (keyBytes.Length < 16){
+                Array.Resize(ref keyBytes, 16);
+            }else if (keyBytes.Length > 16 && keyBytes.Length < 24){
+                Array.Resize(ref keyBytes, 24);
+            }else if (keyBytes.Length > 24 && keyBytes.Length < 32)
+            {
+                Array.Resize(ref keyBytes, 32);
+            }else if (keyBytes.Length > 32){
+                Array.Resize(ref keyBytes, 32);
+            }
+
+            return keyBytes;
+        }
+
+        public static void EncryptFile(string filePath, string key, byte[] keyB = null)
         {
+
             using (Aes aesAlg = Aes.Create())
             {
-                aesAlg.Key = Convert.FromBase64String(key);
+                if (keyB != null)
+                    aesAlg.Key = keyB;
+                else
+                    aesAlg.Key = Convert.FromBase64String(key);
                 aesAlg.Mode = CipherMode.CFB;
 
                 aesAlg.GenerateIV();
@@ -543,24 +560,27 @@ namespace TheIdkTool{
                 }
 
                 byte[] result = new byte[aesAlg.IV.Length + encryptedContent.Length];
-                Buffer.BlockCopy(aesAlg.IV, 0, result, 0, aesAlg.IV.Length);
-                Buffer.BlockCopy(encryptedContent, 0, result, aesAlg.IV.Length, encryptedContent.Length);
+                System.Buffer.BlockCopy(aesAlg.IV, 0, result, 0, aesAlg.IV.Length);
+                System.Buffer.BlockCopy(encryptedContent, 0, result, aesAlg.IV.Length, encryptedContent.Length);
 
                 File.WriteAllBytes(filePath, result);
             }
         }
 
-        public static void DecryptFile(string filePath, string key)
+        public static void DecryptFile(string filePath, string key, byte[] keyB = null)
         {
             using (Aes aesAlg = Aes.Create())
             {
-                aesAlg.Key = Convert.FromBase64String(key);
+                if (keyB != null)
+                    aesAlg.Key = keyB;
+                else
+                    aesAlg.Key = Convert.FromBase64String(key);
                 aesAlg.Mode = CipherMode.CFB;
 
                 byte[] encryptedData = File.ReadAllBytes(filePath);
 
                 byte[] iv = new byte[aesAlg.IV.Length];
-                Buffer.BlockCopy(encryptedData, 0, iv, 0, iv.Length);
+                System.Buffer.BlockCopy(encryptedData, 0, iv, 0, iv.Length);
 
                 ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, iv);
 
@@ -618,8 +638,8 @@ namespace TheIdkTool{
                     byte[] encryptedText = msEncrypt.ToArray();
 
                     byte[] result = new byte[iv.Length + encryptedText.Length];
-                    Buffer.BlockCopy(iv, 0, result, 0, iv.Length);
-                    Buffer.BlockCopy(encryptedText, 0, result, iv.Length, encryptedText.Length);
+                    System.Buffer.BlockCopy(iv, 0, result, 0, iv.Length);
+                    System.Buffer.BlockCopy(encryptedText, 0, result, iv.Length, encryptedText.Length);
 
                     return Convert.ToBase64String(result);
                 }
@@ -780,6 +800,43 @@ namespace TheIdkTool{
             }
         }
 
+        public static void ShredFile(string filePath, int overwritePasses = 3){
+            try{
+                long fileLength = new FileInfo(filePath).Length;
+
+                using (var rng = RandomNumberGenerator.Create()){
+                    byte[] buffer = new byte[4096];
+
+                    for (int i = 0; i < overwritePasses; i++){
+                        using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Write, FileShare.None)){
+                            long bytesWritten = 0;
+                            while (bytesWritten < fileLength){
+                                rng.GetBytes(buffer);
+                                long bytesToWrite = Math.Min(buffer.Length, fileLength - bytesWritten);
+                                fileStream.Write(buffer, 0, (int)bytesToWrite);
+                                bytesWritten += bytesToWrite;
+                            }
+                        }
+                    }
+                }
+
+                for (int i = 0; i < overwritePasses; i++){
+                    string tempFilePath = filePath + "." + Guid.NewGuid().ToString();
+                    File.Move(filePath, tempFilePath);
+                    filePath = tempFilePath;
+                }
+
+                using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Write, FileShare.None)){
+                    fileStream.SetLength(0);
+                }
+
+                File.Delete(filePath);
+            }catch (Exception ex){
+                Console.WriteLine($"Error shredding file: {ex.Message}");
+            }
+        }
+
+
         public static Process StartProcess(string path){
             try{
                 ProcessStartInfo startInfo = new ProcessStartInfo();
@@ -792,11 +849,84 @@ namespace TheIdkTool{
             }
         }
 
+        public static void AddContextMenu(string buttonName, string commandName, bool forFolder, string logoName = "logo2.ico"){
+            string keyPath = (forFolder ? @"Folder\shell\" : @"*\shell\") + buttonName;
+            string iconPath = Environment.ProcessPath.Replace("TheIdkTool.exe", "resources\\" + logoName);
+
+            using (RegistryKey key = Registry.ClassesRoot.CreateSubKey(keyPath)){
+                if (key != null){
+                    key.SetValue("", buttonName);
+                    if (!string.IsNullOrEmpty(iconPath)){
+                        key.SetValue("Icon", iconPath);
+                    }
+                }
+            }
+
+            using (RegistryKey commandKey = Registry.ClassesRoot.CreateSubKey($@"{keyPath}\command")){
+                if (commandKey != null){
+                    string command = $"\"{Environment.ProcessPath}\" {commandName} \"%1\"";
+                    commandKey.SetValue("", command);
+                }
+            }
+        }
+
+        public static void RemoveContextMenu(string buttonName, bool forFolder){
+            string keyPath = (forFolder ? @"Folder\shell\" : @"*\shell\") + buttonName;
+            Registry.ClassesRoot.DeleteSubKeyTree(keyPath, false);
+        }
+
         public static void TryToKillByName(string name){
             foreach (Process process in Process.GetProcesses()){
                 if (process.ProcessName.StartsWith(name))
                     TryToKillProcess(process);
             }
+        }
+
+        public static void PlaySound(string soundName){
+            if (!MainWindow.enableSoundNotifications)
+                return;
+
+            soundName = Environment.ProcessPath.Replace("TheIdkTool.exe", "resources\\" + soundName);
+
+            if (!System.IO.File.Exists(soundName)){
+                DrawUtilRender.AddDrawUtil(new WarningDialog(), "Can't find " + soundName + ".");
+            }
+
+            using (SoundPlayer player = new SoundPlayer(soundName)){
+                player.Play();
+            }
+        }
+
+        public static List<ModuleSummary> GetAllProcessModules(){
+            var moduleDictionary = new Dictionary<(string ModuleName, string FilePath), int>();
+
+            foreach (var process in Process.GetProcesses()){
+                try{
+                    foreach (ProcessModule module in process.Modules){
+                        var key = (module.ModuleName, module.FileName);
+
+                        if (moduleDictionary.ContainsKey(key)){
+                            moduleDictionary[key]++;
+                        }else{
+                            moduleDictionary[key] = 1;
+                        }
+                    }
+                }catch (Exception ex){
+                    Console.WriteLine($"Error accessing process {process.ProcessName}: {ex.Message}");
+                }
+            }
+
+            return moduleDictionary.Select(entry => new ModuleSummary{
+                ModuleName = entry.Key.ModuleName,
+                FilePath = entry.Key.FilePath,
+                Count = entry.Value
+            }).ToList();
+        }
+
+        public class ModuleSummary{
+            public string ModuleName { get; set; }
+            public string FilePath { get; set; }
+            public int Count { get; set; }
         }
 
         public static float StringToFloat(string str){
