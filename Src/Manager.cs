@@ -1,4 +1,4 @@
-﻿﻿using Microsoft.Win32;
+﻿using Microsoft.Win32;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
@@ -708,7 +708,7 @@ namespace TheIdkTool{
         }
 
 
-        public static string[] GetEveryFileName(string path){
+        public static string[] GetEveryFileName(string path, bool addDirectory = false){
             string[] files = Directory.GetFiles(path);
 
             string[] subDirectories = Directory.GetDirectories(path);
@@ -719,6 +719,8 @@ namespace TheIdkTool{
 
             foreach (string subDir in subDirectories){
                 allFileNames.AddRange(GetEveryFileName(subDir));
+                if(addDirectory)
+                    allFileNames.Add(subDir);
             }
 
             return allFileNames.ToArray();
@@ -836,6 +838,10 @@ namespace TheIdkTool{
             }
         }
 
+        public static void ForceDeleteFile(string file){
+            Process.Start(Environment.ProcessPath.Replace("TheIdkTool.exe", "\\resources\\handle.exe"), "-c " + file);
+            File.Delete(file);
+        }
 
         public static Process StartProcess(string path){
             try{
