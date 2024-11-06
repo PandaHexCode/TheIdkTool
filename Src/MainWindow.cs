@@ -1,4 +1,4 @@
-﻿using Silk.NET.Windowing;
+using Silk.NET.Windowing;
 using Silk.NET.Input;
 using Silk.NET.OpenGL;
 using Silk.NET.OpenGL.Extensions.ImGui;
@@ -20,6 +20,8 @@ namespace TheIdkTool.Windows{
         public static bool showAdvancedButtons = false;
         public static bool enableSoundNotifications = true;
         public static int currentSelectedScreen = 0;
+
+        public static bool isFocused = true;
 
         public void CalculateColors() {
             colors[0] = Manager.HexToVector4("403037");
@@ -67,50 +69,54 @@ namespace TheIdkTool.Windows{
             window.FramebufferResize += s =>{
                 gl.Viewport(s);
             };
-
+      
             CalculateColors();
             WindowManager.InitWindows();
             SaveFileManager.LoadFiles();
 
             window.Render += delta =>{
-                controller.Update((float)delta);
+                if (MainWindow.isFocused){
+                    controller.Update((float)delta);
 
-                gl.ClearColor(Color.FromArgb(255, (int)(.45f * 255), (int)(.55f * 255), (int)(.60f * 255)));
-                gl.Clear((uint)ClearBufferMask.ColorBufferBit);
+                    gl.ClearColor(Color.FromArgb(255, (int)(.45f * 255), (int)(.55f * 255), (int)(.60f * 255)));
+                    gl.Clear((uint)ClearBufferMask.ColorBufferBit);
 
-                ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.DockingEnable;
-                ImGui.DockSpaceOverViewport();
+                    ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.DockingEnable;
+                    ImGui.DockSpaceOverViewport();
 
-                // ImGui.PushStyleColor(ImGuiCol.TitleBg, new Vector4(0.2f, 0.2f, 0.8f, 1.0f));
-                ImGui.PushStyleColor(ImGuiCol.TitleBgActive, colors[2]);
+                    // ImGui.PushStyleColor(ImGuiCol.TitleBg, new Vector4(0.2f, 0.2f, 0.8f, 1.0f));
+                    ImGui.PushStyleColor(ImGuiCol.TitleBgActive, colors[2]);
 
-                ImGui.PushStyleColor(ImGuiCol.Button, colors[0]);
-                ImGui.PushStyleColor(ImGuiCol.ButtonHovered, colors[1]);
-                ImGui.PushStyleColor(ImGuiCol.ButtonActive, colors[3]);
+                    ImGui.PushStyleColor(ImGuiCol.Button, colors[0]);
+                    ImGui.PushStyleColor(ImGuiCol.ButtonHovered, colors[1]);
+                    ImGui.PushStyleColor(ImGuiCol.ButtonActive, colors[3]);
 
-                ImGui.PushStyleColor(ImGuiCol.ResizeGrip, colors[2]);
-                ImGui.PushStyleColor(ImGuiCol.ResizeGripHovered, colors[1]);
-                ImGui.PushStyleColor(ImGuiCol.ResizeGripActive, colors[3]);
+                    ImGui.PushStyleColor(ImGuiCol.ResizeGrip, colors[2]);
+                    ImGui.PushStyleColor(ImGuiCol.ResizeGripHovered, colors[1]);
+                    ImGui.PushStyleColor(ImGuiCol.ResizeGripActive, colors[3]);
 
-                ImGui.PushStyleColor(ImGuiCol.FrameBg, colors[6]);
-                ImGui.PushStyleColor(ImGuiCol.FrameBgHovered, colors[5]);
-                ImGui.PushStyleColor(ImGuiCol.FrameBgActive, colors[4]);
-               
-                ImGui.PushStyleColor(ImGuiCol.CheckMark, colors[7]);
+                    ImGui.PushStyleColor(ImGuiCol.FrameBg, colors[6]);
+                    ImGui.PushStyleColor(ImGuiCol.FrameBgHovered, colors[5]);
+                    ImGui.PushStyleColor(ImGuiCol.FrameBgActive, colors[4]);
 
-                ImGui.PushStyleColor(ImGuiCol.TextSelectedBg, colors[1]);
+                    ImGui.PushStyleColor(ImGuiCol.CheckMark, colors[7]);
 
-                ImGui.PushStyleColor(ImGuiCol.Tab, colors[2]);
-                ImGui.PushStyleColor(ImGuiCol.TabHovered, colors[0]);
-                ImGui.PushStyleColor(ImGuiCol.TabActive, colors[0]);
+                    ImGui.PushStyleColor(ImGuiCol.TextSelectedBg, colors[1]);
 
-               // ImGui.PushStyleColor(ImGuiCol., colors[7]);
+                    ImGui.PushStyleColor(ImGuiCol.Tab, colors[2]);
+                    ImGui.PushStyleColor(ImGuiCol.TabHovered, colors[0]);
+                    ImGui.PushStyleColor(ImGuiCol.TabActive, colors[0]);
 
-                DrawMainMenuBar();
-                WindowManager.Draw();
+                    // ImGui.PushStyleColor(ImGuiCol., colors[7]);
 
-                controller.Render();
+                    DrawMainMenuBar();
+                    WindowManager.Draw();
+
+                    controller.Render();
+                }
             };
+
+            window.FocusChanged += OnFocusChanged;
 
             window.Closing += () => {
                 controller?.Dispose();
@@ -125,6 +131,10 @@ namespace TheIdkTool.Windows{
             window.Run();
 
             window.Dispose();
+        }
+
+        private static void OnFocusChanged(bool isFocused){
+            MainWindow.isFocused = isFocused;
         }
 
         public bool[] checkBoxReferences = new bool[1] { false } ;
@@ -197,6 +207,8 @@ namespace TheIdkTool.Windows{
             Manager.AddContextMenu("Decrypt file", "decrypt", false, "encryptIco");
             Manager.AddContextMenu("Shred file", "shred", false, "shredIco.ico");
             Manager.AddContextMenu("Shred folder", "shredF", true, "shredIco.ico");
+            Manager.AddContextMenu("Force delete file", "forceDelete", false, "shredIco.ico");
+            Manager.AddContextMenu("Force delete folder", "forceDeleteF", true, "shredIco.ico");
             DrawUtilRender.AddDrawUtil(new WarningDialog(), "Finished.");
         }
 
@@ -208,6 +220,8 @@ namespace TheIdkTool.Windows{
             Manager.RemoveContextMenu("Decrypt file", false);
             Manager.RemoveContextMenu("Shred file", false);
             Manager.RemoveContextMenu("Shred folder", true);
+            Manager.RemoveContextMenu("Force delete file", false);
+            Manager.RemoveContextMenu("Force delete folder", true);
             DrawUtilRender.AddDrawUtil(new WarningDialog(), "Finished.");
         }
 
