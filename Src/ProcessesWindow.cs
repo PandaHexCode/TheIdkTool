@@ -1,4 +1,4 @@
-﻿﻿using ImGuiNET;
+﻿using ImGuiNET;
 using Silk.NET.Core.Native;
 using System;
 using System.Diagnostics;
@@ -20,6 +20,8 @@ namespace TheIdkTool.Windows{
         public static List<Module> checkForNewModulesRegisteredModules = new List<Module>() ;
         private List<Manager.ModuleSummary> moduleSummaries = new List<Manager.ModuleSummary>();
         private ManagementEventWatcher? monitorProcessesWatcher = null;
+
+        private string processSearchQuery = string.Empty;
 
         public class Module{
             public Process process;
@@ -166,11 +168,16 @@ namespace TheIdkTool.Windows{
                 Manager.Tooltip("Menu that can be opened by numpad 1 and numpad 5");
             }
 
-            if (ImGui.TreeNodeEx("Active Processes")){ 
+            if (ImGui.TreeNodeEx("Active Processes")){  
+                ImGui.Text("Search:");
+                ImGui.SameLine();
+                ImGui.InputText("", ref this.processSearchQuery, 100);
                 foreach (Process process in Process.GetProcesses().Reverse()){
-                    if (ImGui.TreeNodeEx(process.ProcessName + ",pid: " + process.Id)){
-                        DrawProcessTreeNode(process);
-                        ImGui.TreePop();
+                    if (this.processSearchQuery == string.Empty || process.ProcessName.Contains(this.processSearchQuery, StringComparison.OrdinalIgnoreCase)){
+                        if (ImGui.TreeNodeEx(process.ProcessName + ",pid: " + process.Id)){
+                            DrawProcessTreeNode(process);
+                            ImGui.TreePop();
+                        }
                     }
                 }
                 ImGui.TreePop();
@@ -328,6 +335,15 @@ namespace TheIdkTool.Windows{
                 catch (Exception ex) { ImGui.Text("Error"); }
                 ImGui.TreePop();
             }
+
+            try{
+                if (ImGui.TreeNode("ParentProcess")){
+                    Process parentProcess = Process.GetProcessById(GetParentProcessId(process.Id));
+                    ImGui.Text(parentProcess.ProcessName);
+                    DrawProcessTreeNode(parentProcess);
+                    ImGui.TreePop();
+                }
+            }catch (Exception e) { };
 
             if (ImGui.TreeNodeEx("WindowClasses")){
                 List<string> classNames = GetAllWindowClasses(process);
@@ -610,6 +626,25 @@ namespace TheIdkTool.Windows{
                 Console.WriteLine(ex.Message + "\n" + ex.StackTrace);
                 return string.Empty;
             }
+        }
+
+        static int GetParentProcessId(int processId)
+        {
+            // WMI Query um den Parent Process zu finden
+            string query = $"SELECT ParentProcessId FROM Win32_Process WHERE ProcessId = {processId}";
+            using (ManagementObjectSearcher searcher = new ManagementObjectSearcher(query))
+            {
+                using (ManagementObjectCollection results = searcher.Get())
+                {
+                    foreach (ManagementObject mo in results)
+                    {
+                        // Rückgabe der ParentProcessId
+                        return Convert.ToInt32(mo["ParentProcessId"]);
+                    }
+                }
+            }
+            // Rückgabe -1 falls ParentProcessId nicht gefunden
+            return -1;
         }
 
         public ManagementEventWatcher MonitorProcesses(){
